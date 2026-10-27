@@ -94,3 +94,10 @@ export function propuestaSinIA({ negocio, pais, paquete, complementos, total, co
     proximosPasos: ['Confirmar la propuesta', 'Pagar el anticipo', 'Enviar logo, fotos y textos'],
   }, { negocio, pais, paquete, total, config });
 }
+
+// La respuesta pegada desde un chat de Claude puede traer texto o cercas ``` alrededor del JSON.
+export function leerRespuesta(texto) {
+  const s = String(texto ?? ''), i = s.indexOf('{'), j = s.lastIndexOf('}');
+  if (i < 0 || j <= i) return null;
+  try { const v = JSON.parse(s.slice(i, j + 1)); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; }
+}

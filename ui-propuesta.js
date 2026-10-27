@@ -1,4 +1,4 @@
-import { calcularTotal, armarPrompt, propuestaTexto, propuestaSinIA, montosSospechosos } from './propuesta.js';
+import { calcularTotal, armarPrompt, propuestaTexto, propuestaSinIA, montosSospechosos, leerRespuesta } from './propuesta.js';
 import { MONEDA, formatearMoneda } from './precios.js';
 import { normalizar } from './tablero.js';
 import { h, copiar, toast } from './util.js';
@@ -19,7 +19,12 @@ export function iniciarPropuesta(raiz, ctx) {
   const total = h('div', { class: 'total', 'aria-live': 'polite' });
   const estado = h('p', { class: 'muted', 'aria-live': 'polite' });
   const texto = h('textarea', { id: 'p-texto', rows: 18, placeholder: 'Acá aparece la propuesta. La podés editar antes de copiarla.' });
-  const btnIA = h('button', { class: 'primario', type: 'button', onclick: redactarIA }, 'Redactar con IA');
+  const btnIA = h('button', { class: 'primario', type: 'button', onclick: copiarPedido }, 'Copiar pedido para Claude');
+  const respuesta = h('textarea', { id: 'p-respuesta', rows: 5, placeholder: 'Pegá acá lo que te contestó Claude (el bloque entre llaves { }).' });
+  const pasoClaude = h('div', { class: 'vista', hidden: true },
+    h('p', { class: 'muted' }, 'Abrí un chat en claude.ai, pegá el pedido y copiá la respuesta completa.'),
+    h('label', { for: 'p-respuesta' }, 'Respuesta de Claude', respuesta),
+    h('div', { class: 'acciones' }, h('button', { type: 'button', class: 'primario', onclick: usarRespuesta }, 'Usar respuesta')));
   const desde = h('p', { class: 'muted', hidden: true });
 
   raiz.replaceChildren(h('div', { class: 'vista estrecha' },
@@ -34,7 +39,7 @@ export function iniciarPropuesta(raiz, ctx) {
       total,
       h('label', { for: 'p-notas' }, 'Notas de la reunión', notas),
       h('div', { class: 'acciones' }, btnIA, h('button', { type: 'button', onclick: usarPlantilla }, 'Usar plantilla sin IA')),
-      estado),
+      pasoClaude, estado),
     h('div', { class: 'bloque' },
       h('label', { for: 'p-texto' }, 'Propuesta', texto),
       h('div', { class: 'acciones' },
@@ -57,22 +62,22 @@ export function iniciarPropuesta(raiz, ctx) {
       d.total.mensual ? h('span', {}, 'Mantenimiento: ', h('b', {}, f(d.total.mensual) + '/mes')) : '');
   }
 
-  async function redactarIA() {
+  // Sin IA dentro de la página: el pedido se copia a un chat de Claude y la respuesta vuelve pegada.
+  async function copiarPedido() {
     const d = datos();
     if (!d.negocio) return toast('Poné el nombre del negocio.');
     if (!d.notas) return toast('Pegá las notas de la reunión.');
-    const sample = await ctx.usar('sample');
-    if (!sample) { estado.textContent = 'La IA no está disponible acá. Usé la plantilla; completala a mano.'; return usarPlantilla(); }
-    btnIA.disabled = true; estado.textContent = 'Redactando…';
-    try {
-      const partes = await sample.json(armarPrompt({ ...d, config: d.cfg }), { modelTier: 'default' });
-      texto.value = propuestaTexto(partes, { negocio: d.negocio, pais: d.pais, paquete: d.paquete, total: d.total, config: d.cfg });
-      estado.textContent = montosSospechosos(partes) ? 'Ojo: la IA escribió un monto en el texto. Revisalo antes de mandar.' : 'Listo. Revisala y editá lo que haga falta.';
-    } catch (e) {
-      const motivo = { not_granted: 'no diste permiso para usar la IA en esta página', rate_limited: 'se alcanzó el límite de uso por ahora' }[e?.code] || 'la IA no respondió bien';
-      estado.textContent = `No se pudo redactar con IA (${motivo}). Tus notas siguen acá; usé la plantilla.`;
-      usarPlantilla();
-    } finally { btnIA.disabled = false; }
+    const pedido = armarPrompt({ ...d, config: d.cfg });
+    pasoClaude.hidden = false;
+    toast(await copiar(pedido) ? 'Pedido copiado. Pegalo en claude.ai.' : 'No se pudo copiar. Probá de nuevo.');
+  }
+
+  function usarRespuesta() {
+    const d = datos();
+    const partes = leerRespuesta(respuesta.value);
+    if (!partes) { estado.textContent = 'No entendí la respuesta. Copiá todo el bloque entre llaves { } que escribió Claude.'; return; }
+    texto.value = propuestaTexto(partes, { negocio: d.negocio, pais: d.pais, paquete: d.paquete, total: d.total, config: d.cfg });
+    estado.textContent = montosSospechosos(partes) ? 'Ojo: Claude escribió un monto en el texto. Revisalo antes de mandar.' : 'Listo. Revisala y editá lo que haga falta.';
   }
 
   function usarPlantilla() {

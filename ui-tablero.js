@@ -19,10 +19,11 @@ export function iniciarTablero(raiz, ctx) {
     h('label', { class: 'btn', for: 'importar-json' }, 'Importar JSON',
       h('input', { id: 'importar-json', type: 'file', accept: 'application/json,.json', hidden: true, onchange: importar })));
   const vacio = h('p', { class: 'muted', hidden: true },
-    'Todavía no hay negocios. Tocá "Nueva tarjeta", pegá una lista (una línea por negocio: negocio | rubro | país | ciudad | contacto | fuente) o cargá resultados con /buscar-clientes.');
+    'Todavía no hay negocios. Tocá "Nueva tarjeta", pegá una lista (una línea por negocio: negocio | rubro | país | ciudad | contacto | fuente) o pegá las líneas que te da /buscar-clientes.');
 
   raiz.replaceChildren(
-    store.real ? '' : h('p', { class: 'aviso warn' }, 'No hay conexión con la base. Lo que cargues ahora solo dura mientras la página siga abierta. Exportá el JSON antes de cerrarla.'),
+    store.real ? h('p', { class: 'muted' }, 'Tus datos se guardan en este navegador. Para pasarlos a otro dispositivo usá Exportar e Importar JSON.')
+      : h('p', { class: 'aviso warn' }, 'Este navegador no deja guardar datos (¿ventana privada?). Lo que cargues ahora se pierde al cerrar: exportá el JSON antes.'),
     resumen, acciones, vacio, h('div', { class: 'carril' }, columnas));
 
   // Un Sortable por columna; se crean una vez y el render solo cambia su contenido.
