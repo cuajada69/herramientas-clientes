@@ -8,7 +8,8 @@ function almacen() {
     localStorage.setItem(k, '1'); localStorage.removeItem(k);
     return {
       real: true,
-      leer: (p) => { const v = localStorage.getItem(PREFIJO + p); return v == null ? null : JSON.parse(v); },
+      // Un valor corrupto se ignora en vez de romper toda la página.
+      leer: (p) => { try { const v = localStorage.getItem(PREFIJO + p); return v == null ? null : JSON.parse(v); } catch { return null; } },
       escribir: (p, d) => localStorage.setItem(PREFIJO + p, JSON.stringify(d)),
       borrar: (p) => localStorage.removeItem(PREFIJO + p),
       claves: () => Object.keys(localStorage).filter((k) => k.startsWith(PREFIJO)).map((k) => k.slice(PREFIJO.length)),
@@ -24,7 +25,8 @@ export async function abrirDb() {
   const a = almacen();
   const oyentes = new Map(); // colección -> Set<fn>
   const col = (path) => path.split('/').slice(0, -1).join('/');
-  const listarSync = (c) => a.claves().filter((p) => col(p) === c).map((p) => ({ id: p.split('/').pop(), ...a.leer(p) }));
+  const listarSync = (c) => a.claves().filter((p) => col(p) === c).map((p) => [p, a.leer(p)]).filter(([, v]) => v && typeof v === 'object')
+    .map(([p, v]) => ({ id: p.split('/').pop(), ...v }));
   const avisar = (c) => (oyentes.get(c) || []).forEach((fn) => fn(listarSync(c)));
   const escribir = (path, data) => {
     try { a.escribir(path, data); } catch { throw new Error('el navegador no tiene más espacio. Exportá el JSON y borrá tarjetas viejas'); }
