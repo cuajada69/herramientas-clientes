@@ -32,7 +32,7 @@ function clasificarContacto(c) {
   if (!c) return {};
   if (c.startsWith('@') || /instagram\.com\//i.test(c)) return { instagram: c.startsWith('@') ? c : '@' + limpiaIg(c) };
   if (/^\S+@\S+\.\S+$/.test(c)) return { correo: c };
-  if (/^[+\d][\d\s()-]{6,}$/.test(c)) return { telefono: c };
+  if (/^[+(\d][\d\s()+-]{6,}$/.test(c)) return { telefono: c };
   return { web: c };
 }
 
