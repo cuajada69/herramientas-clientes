@@ -1,8 +1,8 @@
 export const COLUMNAS = [
   { id: 'prospecto', titulo: 'Prospecto' },
-  { id: 'escribi', titulo: 'Escribí' },
-  { id: 'conversacion', titulo: 'Conversación' },
-  { id: 'propuesta', titulo: 'Propuesta' },
+  { id: 'escribi', titulo: 'Le escribí' },
+  { id: 'conversacion', titulo: 'En conversación' },
+  { id: 'propuesta', titulo: 'Propuesta enviada' },
   { id: 'cliente', titulo: 'Cliente' },
   { id: 'descartado', titulo: 'Descartado' },
 ];
