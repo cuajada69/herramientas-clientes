@@ -27,7 +27,8 @@ export async function copiar(texto, nodoTexto) {
 
 export function toast(msg) {
   const t = h('div', { class: 'toast', role: 'status' }, msg);
-  document.body.append(t);
+  // Un <dialog> modal tapa todo lo demás: el aviso va adentro si hay uno abierto.
+  (document.querySelector('dialog[open]') || document.body).append(t);
   setTimeout(() => t.remove(), 3500);
 }
 

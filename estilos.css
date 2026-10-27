@@ -31,6 +31,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-body); }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
 h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.2; }
@@ -127,7 +128,18 @@ dialog .cabeza { display: flex; justify-content: space-between; align-items: cen
 .total { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .95rem; }
 .total b { font-family: var(--font-data); }
 
+.check { display: flex; align-items: center; gap: 6px; color: var(--fg); font-size: .95rem; }
+.check input { width: auto; }
+details summary { cursor: pointer; font-weight: 600; }
+.toast {
+  position: fixed; z-index: 20; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px);
+  background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-weight: 600;
+}
+
 @media (max-width: 640px) {
   .columnas { grid-auto-columns: 82vw; }
+  nav.tabs { width: 100%; }
+  nav.tabs a { padding: 6px 9px; font-size: .92rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
