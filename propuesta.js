@@ -45,10 +45,11 @@ export function propuestaTexto(partes, { negocio, pais, paquete, total, config =
   const lista = (x) => (Array.isArray(x) ? x : []);
   const tiempos = lista(partes?.tiempos).map((t) => ({ etapa: String(t?.etapa ?? ''), dias: Number(t?.dias) || 0 }));
   const plazo = plazoDe(pais, paquete, config);
+  const alcance = lista(partes?.alcance).length ? lista(partes?.alcance) : BASE[paquete] || [];
   const lineas = [
     `Propuesta para ${negocio}`, '',
     es ? 'Lo que he visto' : 'Lo que vi', partes?.problema ?? '', '',
-    'Qué incluye', ...lista(partes?.alcance).map((a) => `- ${a}`), '',
+    'Qué incluye', ...alcance.map((a) => `- ${a}`), '',
     ...(tiempos.length ? ['Tiempos', ...tiempos.map((t) => `- ${t.etapa}: ${t.dias} días hábiles`), ''] : []),
     'Inversión', `- Pago único: ${m.unico}`, `- Anticipo del ${ANTICIPO_PCT} %: ${m.anticipo}`, `- Saldo al entregar: ${m.saldo}`,
     ...(m.mensual ? [`- Mantenimiento: ${m.mensual} al mes`] : []), '',
@@ -59,10 +60,13 @@ export function propuestaTexto(partes, { negocio, pais, paquete, total, config =
     `- Respaldo por AirTM${config.airtm ? `: ${config.airtm}` : ''}.`, '',
     'Próximos pasos', ...lista(partes?.proximosPasos).map((p) => `- ${p}`),
   ];
-  if (config.whatsapp) lineas.push('', `WhatsApp: ${config.whatsapp}`);
+  if (!es && config.whatsapp) lineas.push('', `WhatsApp: ${config.whatsapp}`);
   lineas.push('', 'Kilian Vega · Desarrollo web');
   return lineas.join('\n');
 }
+
+export const montosSospechosos = (partes) =>
+  [partes?.problema, partes?.alcance, partes?.proximosPasos].flat().some((x) => /[$€]|\d{1,3}([.,]\d{3})+/.test(String(x ?? '')));
 
 const BASE = {
   presencia: ['Diseño a medida de 1 a 5 secciones', 'Adaptada a móvil', 'Botón de contacto y mapa', 'Publicación en línea'],

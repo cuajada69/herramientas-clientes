@@ -15,7 +15,7 @@ export function crearTarjeta(datos, hoy) {
   const t = { negocio: '', rubro: '', pais: 'CO', ciudad: '', correo: '', telefono: '', instagram: '', web: '', servicio: '',
     valor: null, fuente: '', proximo: null, nota: '', columna: 'prospecto', actualizado: hoy,
     ...Object.fromEntries(Object.entries(datos).filter(([, v]) => v !== undefined)) };
-  t.id = datos.id || `${slug(t.negocio)}-${slug(t.ciudad)}`;
+  t.id = datos.id || `${slug(t.negocio)}-${slug(t.ciudad)}`.replace(/^-+|-+$/g, '') || 'tarjeta-' + Date.now().toString(36);
   return t;
 }
 

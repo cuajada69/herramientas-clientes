@@ -1,5 +1,5 @@
 import { calcularTarifa, precioProyecto, paqueteCercano } from './calculo.js';
-import { formatearMoneda } from './precios.js';
+import { formatearMoneda, convertir } from './precios.js';
 import { h, toast } from './util.js';
 
 const INICIAL = { moneda: 'COP', fijos: 250000, personales: 1500000, gananciaPct: 20, horasSemana: 30, facturablePct: 60,
@@ -48,11 +48,16 @@ export async function iniciarCalculadora(raiz, { store, config }) {
       proyecto.querySelector('[data-proyecto]').replaceChildren();
       return;
     }
+    const otra = v.moneda === 'EUR' ? 'COP' : 'EUR', tasa = config().tasaEurCop;
+    const eq = (x) => { // equivalente en la otra moneda; sin línea si la tasa no sirve
+      try { return h('span', { class: 'muted' }, `≈ ${formatearMoneda(convertir(x, v.moneda, otra, tasa), otra)}${otra === 'EUR' ? ` (tasa ${tasa.toLocaleString('es-CO')})` : ''}`); }
+      catch { return ''; }
+    };
     salida.replaceChildren(
       h('div', { class: 'cifras' },
-        h('div', { class: 'cifra' }, h('span', { class: 'muted' }, 'Por hora'), h('span', { class: 'num' }, fmt(r.hora))),
-        h('div', { class: 'cifra' }, h('span', { class: 'muted' }, 'Por día de 8 h'), h('span', { class: 'num' }, fmt(r.dia))),
-        h('div', { class: 'cifra' }, h('span', { class: 'muted' }, 'Facturación mensual necesaria'), h('span', { class: 'num' }, fmt(r.mensual)))),
+        h('div', { class: 'cifra' }, h('span', { class: 'muted' }, 'Por hora'), h('span', { class: 'num' }, fmt(r.hora)), eq(r.hora)),
+        h('div', { class: 'cifra' }, h('span', { class: 'muted' }, 'Por día de 8 h'), h('span', { class: 'num' }, fmt(r.dia)), eq(r.dia)),
+        h('div', { class: 'cifra' }, h('span', { class: 'muted' }, 'Facturación mensual necesaria'), h('span', { class: 'num' }, fmt(r.mensual)), eq(r.mensual))),
       h('details', { class: 'bloque' }, h('summary', {}, 'Cómo se calculó'),
         h('ol', { class: 'pasos' }, r.pasos.map((p) => h('li', {}, p.texto, ' ',
           h('span', { class: 'num' }, /Horas/.test(p.texto) ? Math.round(p.valor).toLocaleString('es-CO') + ' h' : fmt(p.valor)))))));
@@ -64,7 +69,7 @@ export async function iniciarCalculadora(raiz, { store, config }) {
       const pais = v.moneda === 'EUR' ? 'ES' : 'CO';
       const cerca = paqueteCercano(precio, config().precios[pais]);
       caja.replaceChildren(h('div', { class: 'total' },
-        h('span', {}, 'Precio del proyecto: ', h('b', {}, fmt(precio))),
+        h('span', {}, 'Precio del proyecto: ', h('b', {}, fmt(precio)), ' ', eq(precio)),
         h('span', { class: 'muted' }, `Paquete más cercano: ${NOMBRE_PAQUETE[cerca.clave] || cerca.clave} (${fmt(cerca.precio)})`)));
     }
     programarGuardado();
@@ -83,4 +88,5 @@ export async function iniciarCalculadora(raiz, { store, config }) {
   form.addEventListener('input', pintar); proyecto.addEventListener('input', pintar);
   form.addEventListener('submit', (e) => e.preventDefault()); proyecto.addEventListener('submit', (e) => e.preventDefault());
   pintar();
+  return { refrescar: pintar };
 }

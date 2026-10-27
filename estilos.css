@@ -99,7 +99,7 @@ textarea { resize: vertical; min-height: 110px; }
 .lista { display: grid; gap: 8px; padding: 0 10px 12px; align-content: start; min-height: 80px; }
 .tarjeta {
   background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
-  display: grid; gap: 4px; cursor: grab; touch-action: pan-y; user-select: none;
+  display: grid; gap: 4px; cursor: grab; touch-action: manipulation; user-select: none;
 }
 .tarjeta:focus-visible { outline: 2px solid var(--accent); }
 .tarjeta .t-nombre { font-weight: 700; }

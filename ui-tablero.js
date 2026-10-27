@@ -31,11 +31,11 @@ export function iniciarTablero(raiz, ctx) {
     columnas.append(h('section', { class: 'col', 'aria-label': c.titulo },
       h('header', {}, h('h3', {}, c.titulo), h('span', { class: 'contador', 'data-cuenta': c.id }, '0')), lista));
     if (window.Sortable) sortables.push(window.Sortable.create(lista, {
-      group: 'tablero', animation: 150, delay: 150, delayOnTouchOnly: true, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
+      group: 'tablero', sort: false, animation: 150, delay: 150, delayOnTouchOnly: true, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
       onEnd: (ev) => {
         const id = ev.item.dataset.id, destino = ev.to.dataset.col;
         if (ev.from === ev.to) return;
-        guardar(id, { columna: destino, actualizado: hoy });
+        guardar(id, { columna: destino, actualizado: hoy() });
       },
     }));
   }
@@ -46,9 +46,10 @@ export function iniciarTablero(raiz, ctx) {
   }
 
   function chipFecha(t) {
+    const hoyD = hoy();
     if (!t.proximo || ['cliente', 'descartado'].includes(t.columna)) return '';
-    const clase = t.proximo < hoy ? 'atraso' : t.proximo === hoy ? 'vence' : '';
-    return h('span', { class: `chip ${clase}` }, t.proximo === hoy ? 'hoy' : fechaCorta(t.proximo));
+    const clase = t.proximo < hoyD ? 'atraso' : t.proximo === hoyD ? 'vence' : '';
+    return h('span', { class: `chip ${clase}` }, t.proximo === hoyD ? 'hoy' : fechaCorta(t.proximo));
   }
 
   function nodoTarjeta(t) {
@@ -61,11 +62,11 @@ export function iniciarTablero(raiz, ctx) {
   }
 
   function render() {
-    const r = resumenHoy(tarjetas, hoy);
+    const hoyD = hoy(), r = resumenHoy(tarjetas, hoyD);
     const item = (t, extra) => h('li', {}, h('button', { type: 'button', onclick: () => abrirTarjeta(t) }, h('span', {}, t.negocio), h('span', { class: 'muted' }, extra)));
     resumen.replaceChildren(
       h('section', {}, h('h3', {}, 'Escribir hoy ', h('span', { class: 'contador' }, r.escribirHoy.length)),
-        r.escribirHoy.length ? h('ul', {}, r.escribirHoy.map((t) => item(t, t.proximo < hoy ? 'atrasado' : 'hoy'))) : h('p', { class: 'muted' }, 'Nadie para hoy.')),
+        r.escribirHoy.length ? h('ul', {}, r.escribirHoy.map((t) => item(t, t.proximo < hoyD ? 'atrasado' : 'hoy'))) : h('p', { class: 'muted' }, 'Nadie para hoy.')),
       h('section', {}, h('h3', {}, 'Sin respuesta hace más de 3 días ', h('span', { class: 'contador' }, r.sinRespuesta.length)),
         r.sinRespuesta.length ? h('ul', {}, r.sinRespuesta.map((t) => item(t, 'desde ' + fechaCorta(t.actualizado)))) : h('p', { class: 'muted' }, 'Todos al día.')));
     for (const c of COLUMNAS) {
@@ -82,7 +83,7 @@ export function iniciarTablero(raiz, ctx) {
   // ---------- Detalle de tarjeta ----------
   function abrirTarjeta(t) {
     const nueva = !t;
-    const d = t || crearTarjeta({}, hoy);
+    const d = t || crearTarjeta({}, hoy());
     const campo = (k, etiqueta, tipo = 'text', extra = {}) =>
       h('label', { for: 'f-' + k }, etiqueta, h('input', { id: 'f-' + k, name: k, type: tipo, value: d[k] ?? '', ...extra }));
     const sel = (k, etiqueta, opciones) => h('label', { for: 'f-' + k }, etiqueta,
@@ -90,10 +91,15 @@ export function iniciarTablero(raiz, ctx) {
 
     const plantillas = h('div', { class: 'acciones' });
     const textoPlantilla = h('div', { class: 'plantilla', hidden: true });
+    let mostrado = '';
+    const btnCopiar = h('button', { type: 'button', hidden: true, onclick: async () => toast(await copiar(mostrado, textoPlantilla) ? 'Mensaje copiado.' : 'Seleccioné el texto: copialo a mano.') }, 'Copiar');
     const avisoEs = h('p', { class: 'aviso warn', hidden: d.pais !== 'ES' }, AVISO_ES);
     const confirmarBorrar = h('div', { class: 'acciones', hidden: true },
       h('span', {}, '¿Borrar esta tarjeta?'),
-      h('button', { type: 'button', onclick: async () => { await store.delete(`tarjetas/${d.id}`); dlg.close(); toast('Tarjeta borrada.'); } }, 'Sí, borrar'),
+      h('button', { type: 'button', onclick: async () => {
+        try { await store.delete(`tarjetas/${d.id}`); } catch (err) { return toast('No se pudo borrar: ' + (err?.message || err)); }
+        dlg.close(); toast('Tarjeta borrada.');
+      } }, 'Sí, borrar'),
       h('button', { type: 'button', onclick: () => { confirmarBorrar.hidden = true; } }, 'No'));
 
     const form = h('form', { method: 'dialog' },
@@ -110,7 +116,7 @@ export function iniciarTablero(raiz, ctx) {
         sel('columna', 'Etapa', COLUMNAS.map((c) => [c.id, c.titulo])),
         campo('fuente', 'Fuente del dato')),
       h('label', { for: 'f-nota' }, 'Nota', h('textarea', { id: 'f-nota', name: 'nota', rows: 3 }, d.nota || '')),
-      h('div', {}, h('h3', {}, 'Primer mensaje'), plantillas, textoPlantilla),
+      h('div', {}, h('h3', {}, 'Primer mensaje'), plantillas, textoPlantilla, btnCopiar),
       h('div', { class: 'acciones' },
         h('button', { class: 'primario', type: 'submit' }, 'Guardar'),
         nueva ? '' : h('button', { type: 'button', onclick: () => { dlg.close(); ctx.irAPropuesta?.(leer()); } }, 'Armar propuesta'),
@@ -131,10 +137,8 @@ export function iniciarTablero(raiz, ctx) {
       plantillas.replaceChildren(...['correo', 'instagram', 'whatsapp'].map((tipo) => {
         const texto = plantilla(tipo, actual, ctx.config());
         if (texto == null) return '';
-        return h('button', { type: 'button', onclick: async () => {
-          textoPlantilla.textContent = texto; textoPlantilla.hidden = false;
-          toast(await copiar(texto, textoPlantilla) ? 'Mensaje copiado.' : 'Seleccioné el texto: copialo a mano.');
-        } }, { correo: 'Copiar correo', instagram: 'Copiar DM Instagram', whatsapp: 'Copiar WhatsApp' }[tipo]);
+        return h('button', { type: 'button', onclick: () => { mostrado = texto; textoPlantilla.textContent = texto; textoPlantilla.hidden = false; btnCopiar.hidden = false; } },
+          { correo: 'Ver correo', instagram: 'Ver DM Instagram', whatsapp: 'Ver WhatsApp' }[tipo]);
       }));
     }
     form.addEventListener('input', pintarPlantillas);
@@ -145,14 +149,16 @@ export function iniciarTablero(raiz, ctx) {
       const x = leer();
       if (!x.negocio) return toast('Poné el nombre del negocio.');
       if (nueva) {
-        const t2 = crearTarjeta(x, hoy);
-        delete t2.id; const final = crearTarjeta({ ...t2 }, hoy);
-        if (tarjetas.some((o) => esDuplicado(o, final))) return toast('Ese negocio ya está en el tablero.');
+        const final = crearTarjeta({ ...x, id: undefined }, hoy());
+        if (tarjetas.some((o) => o.id === final.id || esDuplicado(o, final))) return toast('Ese negocio ya está en el tablero.');
         try { await store.set(`tarjetas/${final.id}`, final); } catch (err) { return toast('No se pudo guardar: ' + (err?.message || err)); }
       } else {
-        if (x.columna !== d.columna) x.actualizado = hoy;
-        const { id, ...resto } = x;
-        try { await store.set(`tarjetas/${id}`, { id, ...resto }); } catch (err) { return toast('No se pudo guardar: ' + (err?.message || err)); }
+        if (x.columna !== d.columna) x.actualizado = hoy();
+        const cambios = Object.fromEntries(Object.entries(x).filter(([k, v]) => k !== 'id' && v !== d[k]));
+        if (Object.keys(cambios).length) {
+          try { await store.update(`tarjetas/${d.id}`, cambios); }
+          catch { dlg.close(); return toast('Esa tarjeta ya no existe.'); }
+        }
       }
       dlg.close(); toast('Guardado.');
     });
@@ -173,8 +179,8 @@ export function iniciarTablero(raiz, ctx) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       boton.disabled = true;
-      const r = await agregarVarias(parsearLista(area.value, hoy).tarjetas);
-      const { errores } = parsearLista(area.value, hoy);
+      const r = await agregarVarias(parsearLista(area.value, hoy()).tarjetas);
+      const { errores } = parsearLista(area.value, hoy());
       salida.textContent = `Agregados: ${r.agregadas}. Repetidos: ${r.repetidas}. Con error: ${errores.length}` +
         (errores.length ? ` (líneas ${errores.map((x) => x.linea).join(', ')})` : '') + '.';
       boton.disabled = false;
@@ -188,7 +194,7 @@ export function iniciarTablero(raiz, ctx) {
     let agregadas = 0, repetidas = 0;
     const vistas = [...tarjetas];
     for (const t of nuevas) {
-      if (vistas.some((o) => esDuplicado(o, t))) { repetidas++; continue; }
+      if (vistas.some((o) => o.id === t.id || esDuplicado(o, t))) { repetidas++; continue; }
       try { await store.set(`tarjetas/${t.id}`, t); vistas.push(t); agregadas++; }
       catch (e) { toast('Se cortó la carga: ' + (e?.message || e)); break; }
     }
@@ -200,7 +206,7 @@ export function iniciarTablero(raiz, ctx) {
     const json = JSON.stringify(tarjetas, null, 2);
     const dl = await ctx.usar('downloads');
     if (dl) {
-      try { await dl.save({ filename: `tablero-clientes-${hoy}.json`, data: json }); return; }
+      try { await dl.save({ filename: `tablero-clientes-${hoy()}.json`, data: json }); return; }
       catch (e) { if (e?.code === 'declined' || e?.code === 'cancelled') return; }
     }
     const area = h('textarea', { id: 'export-texto', rows: 12, readonly: true }, json);
@@ -220,7 +226,7 @@ export function iniciarTablero(raiz, ctx) {
     try { datos = JSON.parse(await archivo.text()); } catch { return toast('El archivo no es un JSON válido.'); }
     if (!Array.isArray(datos)) return toast('El JSON tiene que ser una lista de tarjetas (lo que baja "Exportar JSON").');
     const validas = datos.filter((x) => x && typeof x.negocio === 'string' && x.negocio.trim())
-      .map((x) => crearTarjeta({ ...x, columna: COLUMNAS.some((c) => c.id === x.columna) ? x.columna : 'prospecto', pais: x.pais === 'ES' ? 'ES' : 'CO' }, hoy));
+      .map((x) => crearTarjeta({ ...x, id: undefined, columna: COLUMNAS.some((c) => c.id === x.columna) ? x.columna : 'prospecto', pais: x.pais === 'ES' ? 'ES' : 'CO' }, hoy()));
     const r = await agregarVarias(validas);
     toast(`Importados: ${r.agregadas}. Repetidos: ${r.repetidas}. Inválidos: ${datos.length - validas.length}.`);
   }

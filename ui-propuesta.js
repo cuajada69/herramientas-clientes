@@ -1,5 +1,6 @@
-import { calcularTotal, armarPrompt, propuestaTexto, propuestaSinIA } from './propuesta.js';
+import { calcularTotal, armarPrompt, propuestaTexto, propuestaSinIA, montosSospechosos } from './propuesta.js';
 import { MONEDA, formatearMoneda } from './precios.js';
+import { normalizar } from './tablero.js';
 import { h, copiar, toast } from './util.js';
 
 const PAQUETES = [['presencia', 'Presencia'], ['tiendaWhatsapp', 'Tienda WhatsApp / simple'], ['tiendaPagos', 'Tienda con pagos'], ['catalogo', 'Catálogo PDF']];
@@ -66,7 +67,7 @@ export function iniciarPropuesta(raiz, ctx) {
     try {
       const partes = await sample.json(armarPrompt({ ...d, config: d.cfg }), { modelTier: 'default' });
       texto.value = propuestaTexto(partes, { negocio: d.negocio, pais: d.pais, paquete: d.paquete, total: d.total, config: d.cfg });
-      estado.textContent = 'Listo. Revisala y editá lo que haga falta.';
+      estado.textContent = montosSospechosos(partes) ? 'Ojo: la IA escribió un monto en el texto. Revisalo antes de mandar.' : 'Listo. Revisala y editá lo que haga falta.';
     } catch (e) {
       const motivo = { not_granted: 'no diste permiso para usar la IA en esta página', rate_limited: 'se alcanzó el límite de uso por ahora' }[e?.code] || 'la IA no respondió bien';
       estado.textContent = `No se pudo redactar con IA (${motivo}). Tus notas siguen acá; usé la plantilla.`;
@@ -100,21 +101,23 @@ export function iniciarPropuesta(raiz, ctx) {
         doc.text(parte, x, y); y += titulo ? 18 : 15;
       }
     }
-    try { await dl.save({ filename: `propuesta-${(negocio.value || 'cliente').trim().toLowerCase().replace(/\s+/g, '-')}.pdf`, data: doc.output('blob') }); }
+    try { await dl.save({ filename: `propuesta-${normalizar(negocio.value).replace(/ /g, '-') || 'cliente'}.pdf`, data: doc.output('blob') }); }
     catch (e) { if (!['declined', 'cancelled'].includes(e?.code)) toast('No se pudo bajar el PDF: ' + (e?.message || e)); }
   }
 
   async function marcarEnviada() {
     if (!tarjeta) return toast('Esta propuesta no salió de una tarjeta. Abrila desde el tablero para marcarla.');
-    try { await store.update(`tarjetas/${tarjeta.id}`, { columna: 'propuesta', actualizado: hoy, valor: datos().total.unico }); toast(`${tarjeta.negocio} pasó a "Propuesta enviada".`); }
+    const d = datos(), cambios = { columna: 'propuesta', actualizado: hoy() };
+    if (d.pais === (tarjeta.pais === 'ES' ? 'ES' : 'CO')) cambios.valor = d.total.unico;
+    try { await store.update(`tarjetas/${tarjeta.id}`, cambios); toast(`${tarjeta.negocio} pasó a "Propuesta enviada".`); }
     catch (e) { toast('No se pudo actualizar la tarjeta: ' + (e?.message || e)); }
   }
 
   pintarTotal();
   return {
     cargarTarjeta(t) {
-      tarjeta = t; negocio.value = t.negocio || ''; pais.value = t.pais === 'ES' ? 'ES' : 'CO';
-      if (t.nota && !notas.value) notas.value = t.nota;
+      const otra = t.id !== tarjeta?.id; tarjeta = t; negocio.value = t.negocio || ''; pais.value = t.pais === 'ES' ? 'ES' : 'CO';
+      if (otra) notas.value = t.nota || '';
       desde.textContent = `Desde la tarjeta de ${t.negocio}.`; desde.hidden = false;
       texto.value = ''; estado.textContent = ''; pintarTotal();
     },

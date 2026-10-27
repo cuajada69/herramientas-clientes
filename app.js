@@ -21,14 +21,15 @@ async function iniciar() {
   addEventListener('hashchange', ruta); ruta();
 
   const store = await abrirDb();
-  const hoy = hoyLocal(new Date(), zonaLocal());
+  const hoy = () => hoyLocal(new Date(), zonaLocal());
   let config = completarConfig(await store.get('config/general').catch(() => null));
   const ctx = { store, hoy, usar, config: () => config };
 
+  let calc;
   const propuesta = iniciarPropuesta($('#v-propuesta'), ctx);
   iniciarTablero($('#v-tablero'), { ...ctx, irAPropuesta: (t) => { propuesta.cargarTarjeta(t); location.hash = 'propuesta'; } });
-  iniciarConfig($('#v-config'), { store, config, alGuardar: (c) => { config = completarConfig(c); propuesta.refrescar(); } });
-  await iniciarCalculadora($('#v-calculadora'), ctx);
+  iniciarConfig($('#v-config'), { store, config, alGuardar: (c) => { config = completarConfig(c); propuesta.refrescar(); calc?.refrescar(); } });
+  calc = await iniciarCalculadora($('#v-calculadora'), ctx);
 }
 
 iniciar().catch((e) => { console.error(e); toast('Algo falló al abrir la página: ' + (e?.message || e)); });
