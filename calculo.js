@@ -1,8 +1,13 @@
 export function calcularTarifa(e) {
-  if (e.impuestosPct >= 100) throw new Error('Los impuestos deben ser menores a 100 %');
-  if (e.horasSemana <= 0) throw new Error('Las horas por semana deben ser mayores que 0');
-  if (e.facturablePct <= 0) throw new Error('El porcentaje facturable debe ser mayor que 0');
-  if (e.vacacionesSemanas >= 52) throw new Error('Las semanas de vacaciones deben ser menos de 52');
+  const campos = { fijos: 'Los gastos fijos', personales: 'Los gastos personales', gananciaPct: 'El porcentaje de ganancia', horasSemana: 'Las horas por semana',
+    facturablePct: 'El porcentaje facturable', vacacionesSemanas: 'Las semanas de vacaciones', impuestosPct: 'El porcentaje de impuestos' };
+  for (const [k, nombre] of Object.entries(campos)) if (!Number.isFinite(e?.[k])) throw new Error(`${nombre} (${k}) debe ser un número`);
+  if (e.fijos < 0 || e.personales < 0) throw new Error('Los gastos no pueden ser negativos');
+  if (e.gananciaPct <= -100) throw new Error('El porcentaje de ganancia debe ser mayor que -100');
+  if (e.horasSemana <= 0 || e.horasSemana > 168) throw new Error('Las horas por semana deben estar entre 1 y 168');
+  if (e.facturablePct <= 0 || e.facturablePct > 100) throw new Error('El porcentaje facturable debe estar entre 1 y 100');
+  if (e.vacacionesSemanas < 0 || e.vacacionesSemanas >= 52) throw new Error('Las semanas de vacaciones deben estar entre 0 y 51');
+  if (e.impuestosPct < 0 || e.impuestosPct >= 100) throw new Error('Los impuestos deben ser menores a 100 %');
   const costoAnual = (e.fijos + e.personales) * 12;
   const conGanancia = costoAnual * (1 + e.gananciaPct / 100);
   const bruto = conGanancia / (1 - e.impuestosPct / 100);

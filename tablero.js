@@ -13,7 +13,8 @@ const slug = (s) => normalizar(s).replace(/ /g, '-');
 
 export function crearTarjeta(datos, hoy) {
   const t = { negocio: '', rubro: '', pais: 'CO', ciudad: '', correo: '', telefono: '', instagram: '', web: '', servicio: '',
-    valor: null, fuente: '', proximo: null, nota: '', columna: 'prospecto', actualizado: hoy, ...datos };
+    valor: null, fuente: '', proximo: null, nota: '', columna: 'prospecto', actualizado: hoy,
+    ...Object.fromEntries(Object.entries(datos).filter(([, v]) => v !== undefined)) };
   t.id = datos.id || `${slug(t.negocio)}-${slug(t.ciudad)}`;
   return t;
 }
@@ -41,7 +42,7 @@ export function parsearLista(texto, hoy) {
     if (!linea.trim()) return;
     const [negocio, rubro = '', pais = '', ciudad = '', contacto = '', fuente = ''] = linea.split('|').map((x) => x.trim());
     if (linea.split('|').length < 2 || !negocio) return errores.push({ linea: i + 1, texto: linea.trim() });
-    tarjetas.push(crearTarjeta({ negocio, rubro, pais: pais.toUpperCase() === 'ES' ? 'ES' : 'CO', ciudad, fuente,
+    tarjetas.push(crearTarjeta({ negocio, rubro, pais: ['es', 'espana', 'spain'].includes(normalizar(pais)) ? 'ES' : 'CO', ciudad, fuente,
       ...clasificarContacto(contacto) }, hoy));
   });
   return { tarjetas, errores };
@@ -63,7 +64,7 @@ export function plantilla(tipo, t, config = {}) {
   if (tipo === 'correo' && es) return null;
   const web = es ? 'web' : 'página web';
   const servicio = t.servicio || (es ? 'una web sencilla que te traiga clientes' : 'una página web sencilla que te traiga clientes');
-  const problema = t.nota ? `Vi a ${t.negocio} y noté que ${t.nota}.` : `Busqué a ${t.negocio} en internet y no encontré una ${web} propia donde ver lo que ofrecen.`;
+  const problema = t.nota ? `Vi a ${t.negocio} y noté que ${String(t.nota).replace(/[.\s]+$/, '')}.` : `Busqué a ${t.negocio} en internet y no encontré una ${web} propia donde ver lo que ofrecen.`;
   const saludo = es ? `Hola, soy Kilian, desarrollador web.` : `Hola, ¿cómo estás? Soy Kilian, desarrollador web.`;
   const oferta = `Puedo hacerles ${servicio}, con ${es ? 'plazo cerrado' : 'entrega en pocos días'}.`;
   const cierre = "¿Te cuento cómo lo haríamos?";

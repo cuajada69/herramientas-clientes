@@ -17,3 +17,7 @@ export function convertir(monto, de, a, tasaEurCop) {
   if (de === a) return monto;
   return de === 'EUR' ? monto * tasaEurCop : monto / tasaEurCop;
 }
+
+// El spec fija estos valores; los textos y calcularTotal los leen de aquí.
+export const ANTICIPO_PCT = 50;
+export const RONDAS_CAMBIOS = 2;
